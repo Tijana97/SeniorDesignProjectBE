@@ -65,7 +65,12 @@ var storage = multer.diskStorage({
   ) {
     cb(
       null,
-      file.fieldname + "-" + Date.now() + "-" + Math.round(Math.random() * 1e9)
+      file.fieldname +
+        "-" +
+        Date.now() +
+        "-" +
+        Math.round(Math.random() * 1e9) +
+        ".jpg"
     );
   },
 });
@@ -90,7 +95,7 @@ var upload = multer({
 
 function checkFileType(file: Express.Multer.File) {
   // Allowed ext
-  const filetypes = /jpeg|jpg|png|gif/;
+  const filetypes = /jpeg|jpg|png/;
   // Check ext
   const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
   // Check mime
