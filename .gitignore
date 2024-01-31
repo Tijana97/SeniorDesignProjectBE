@@ -6,6 +6,6 @@ dist/
 logs/
 
 # Ignore sensitive or environment-specific files
-
+.env
 # Ignore editor-specific files
 .vscode/
