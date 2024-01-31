@@ -11,6 +11,18 @@ postRouter.get(
   authenticateJWT,
   postController.getPostByUserId
 );
+postRouter.get(
+  "/search/:search",
+  authenticateJWT,
+  postController.getPostsBySearch
+);
+
+postRouter.get("/tags", authenticateJWT, postController.getPostsByTags);
+postRouter.get(
+  "/filter/:search",
+  authenticateJWT,
+  postController.getPostsBySearchAndTags
+);
 
 // PUT POST
 postRouter.put("/:postId", authenticateJWT, postController.updatePost);

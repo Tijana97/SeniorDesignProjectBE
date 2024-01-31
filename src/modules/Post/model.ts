@@ -1,20 +1,5 @@
 import mongoose, { Document, Schema } from "mongoose";
 
-/* const Tag = {
-  storage: "storage",
-  decoration: "decoration",
-  renovation: "renovation",
-  cooking: "cooking",
-  plants: "plants",
-  clothes: "clothes",
-  design: "design",
-  painting: "painting",
-  nature: "nature",
-  art: "art",
-  interior: "interior",
-  animals: "animals",
-}; */
-
 interface IPost extends Document {
   userId: string;
   title: string;
@@ -32,6 +17,19 @@ export interface PostInterface {
   tags: Array<string>;
   imageURL: string;
   creationDate: Date;
+}
+export interface PostResponse {
+  _id?: string | Schema.Types.ObjectId;
+  userId: string;
+  title: string;
+  description: string;
+  tags: Array<string>;
+  imageURL: string;
+  creationDate: Date;
+  userFirstName: string | undefined;
+  userLastName: string | undefined;
+  hasLiked: boolean;
+  isInspired: boolean;
 }
 
 const PostSchema = new Schema<IPost>({

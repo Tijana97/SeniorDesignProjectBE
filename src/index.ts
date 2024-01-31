@@ -8,15 +8,33 @@ import router from "./modules/router";
 import swaggerUI from "swagger-ui-express";
 import swaggerJsDoc from "swagger-jsdoc";
 import { Multer } from "multer";
+import sharp from "sharp";
 import * as path from "path";
 import multer from "multer";
 import { PostInterface } from "./modules/Post/model";
 import postRepository from "./modules/Post/repository";
+import multerS3 from "multer-s3";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
 dotenv.config();
 
+const bucketName = process.env.BUCKET_NAME;
+const bucketRegion = process.env.BUCKET_REGION;
+const accessKey = process.env.ACCESS_KEY;
+const secretAccessKey = process.env.SECRET_ACCESS_KEY;
+
 const app = express();
 const PORT = "8080";
+
+const s3 = new S3Client({
+  credentials: {
+    accessKeyId: accessKey!,
+    secretAccessKey: secretAccessKey!,
+  },
+  region: bucketRegion!,
+});
+
+const storage = multer.memoryStorage();
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
@@ -48,32 +66,12 @@ const options = {
 const specs = swaggerJsDoc(options);
 app.use("/api-docs", swaggerUI.serve, swaggerUI.setup(specs));
 
-var storage = multer.diskStorage({
-  destination: function (
-    req: Request,
-    file: Express.Multer.File,
-    cb: (error: Error | null, filename: string) => void
-  ) {
-    const destinationPath = path.join(__dirname, "images");
-    console.log("Path: ", destinationPath);
-    cb(null, destinationPath);
-  },
-  filename: function (
-    req: Request,
-    file: Express.Multer.File,
-    cb: (error: Error | null, filename: string) => void
-  ) {
-    cb(
-      null,
-      file.fieldname +
-        "-" +
-        Date.now() +
-        "-" +
-        Math.round(Math.random() * 1e9) +
-        ".jpg"
-    );
-  },
-});
+const generateFileName = () => {
+  const name = Date.now() + "-" + Math.round(Math.random() * 1e9) + ".jpg";
+
+  return name;
+};
+
 var upload = multer({
   storage: storage,
   limits: {
@@ -94,11 +92,8 @@ var upload = multer({
 });
 
 function checkFileType(file: Express.Multer.File) {
-  // Allowed ext
   const filetypes = /jpeg|jpg|png/;
-  // Check ext
   const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-  // Check mime
   const mimetype = filetypes.test(file.mimetype);
 
   if (!(mimetype && extname)) {
@@ -110,46 +105,28 @@ app.post(
   "/profile-upload-single",
   authenticateJWT,
   upload.single("profile-file"),
-  /*function (req: Request, res: Response, next: NextFunction) {
-    console.log("Prvi: ", req);
-    try {
-      if (req.file) {
-        console.log("Drugi: ", req.file);
-        console.log(JSON.stringify(req.file));
-        var response = req.file.path;
-        console.log("Treci: ", response);
-        const postData: PostInterface = {
-          title: req.body.title,
-          description: req.body.description,
-          tags: req.body.tags,
-          creationDate: new Date(),
-          imageURL: response,
-        };
-        console.log("cetvrti: ", postData);
-        return console.log("Hajmo pls", response);
-      } else {
-        return res.status(400).json({ error: "No file uploaded" });
-      }
-    } catch (error: any) {
-      console.error(error);
-      return res.status(500).json({ error: "Internal Server Error" });
-    }
-  } */
   async function (req: Request, res: Response, next: NextFunction) {
     try {
       console.log("Bilo sta", req.file);
       if (req.file) {
-        console.log("Drugi: ");
         console.log(JSON.stringify(req.file));
-        var response = req.file.path;
-        console.log("Treci: ", response);
+        const fileBuffer = await sharp(req.file.buffer).toBuffer();
+        var fileName = generateFileName();
+        const uploadParams = {
+          Bucket: bucketName!,
+          Body: fileBuffer,
+          Key: fileName,
+          ContentType: req.file.mimetype,
+        };
+        await s3.send(new PutObjectCommand(uploadParams));
+        console.log("Treci: ", fileName);
         const postData: PostInterface = {
           userId: req.body.userId,
           title: req.body.title,
           description: req.body.description,
-          tags: req.body.tags,
+          tags: req.body.tags.split(","),
           creationDate: new Date(),
-          imageURL: response,
+          imageURL: fileName,
         };
         console.log("cetvrti: ", postData);
         const createdPost = await postRepository.createPost(postData);
@@ -163,18 +140,6 @@ app.post(
     }
   }
 );
-
-/* app.post('/profile-upload-multiple', upload.array('profile-files', 12), function (req, res, next) {
-    // req.files is array of `profile-files` files
-    // req.body will contain the text fields, if there were any
-    var response = '<a href="/">Home</a><br>'
-    response += "Files uploaded successfully.<br>"
-    for(var i=0;i<req.files.length;i++){
-        response += `<img src="${req.files[i].path}" /><br>`
-    }
-    
-    return res.send(response)
-}) */
 
 const useHandler =
   (fn: any) => (req: AppRequest | Request, res: Response, next: NextFunction) =>

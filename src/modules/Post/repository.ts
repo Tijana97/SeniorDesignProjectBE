@@ -17,7 +17,7 @@ const getAllPosts = async (): Promise<PostInterface[]> => {
 
 const getPostById = async (postId: string): Promise<PostInterface | null> => {
   try {
-    return Post.findById(postId);
+    return await Post.findById(postId);
   } catch (error: any) {
     return null;
   }
@@ -41,9 +41,45 @@ const updatePost = async (
 
 const deletePost = async (postId: string): Promise<PostInterface | null> => {
   try {
-    return Post.findByIdAndDelete(postId);
+    return await Post.findByIdAndDelete(postId);
   } catch (error: any) {
     return null;
+  }
+};
+
+const findPostBySearch = async (search: string): Promise<PostInterface[]> => {
+  return await Post.find({ title: { $regex: search, $options: "i" } }).sort({
+    creationDate: -1,
+  });
+};
+
+const findPostByTags = async (filter: string[]): Promise<PostInterface[]> => {
+  try {
+    const posts = await Post.find({ tags: { $in: filter } }).sort({
+      creationDate: -1,
+    });
+    return posts;
+  } catch (error) {
+    console.error("Error finding posts by tags:", error);
+    throw error;
+  }
+};
+
+const findPostsBySearchAndTags = async (
+  search: string,
+  tags: string[]
+): Promise<PostInterface[]> => {
+  try {
+    const posts = await Post.find({
+      $and: [
+        { title: { $regex: search, $options: "i" } },
+        { tags: { $in: tags } },
+      ],
+    }).sort({ creationDate: -1 });
+    return posts;
+  } catch (error) {
+    console.error("Error getting posts by search and tags:", error);
+    throw error;
   }
 };
 
@@ -54,4 +90,7 @@ export default {
   getPostsByUserId,
   updatePost,
   deletePost,
+  findPostBySearch,
+  findPostByTags,
+  findPostsBySearchAndTags,
 };
